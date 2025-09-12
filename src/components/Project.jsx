@@ -14,6 +14,7 @@ const Project = () => {
   const [deviceType, setDeviceType] = useState("");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   const projects = [
     {
@@ -67,9 +68,7 @@ const Project = () => {
       createdTriggers.current.forEach((t) => {
         try {
           t.kill?.();
-        } catch (e) {
-          console.warn("Error killing trigger:", e);
-        }
+        } catch (e) {}
       });
       createdTriggers.current.length = 0;
     }
@@ -83,31 +82,35 @@ const Project = () => {
         if (trigger.vars && trigger.vars.trigger === containerRef.current) {
           trigger.kill();
         }
-      } catch (e) {
-        console.warn("Error killing existing trigger:", e);
-      }
+      } catch (e) {}
     });
     
     gsap.set(projectsRef.current, { x: 0 });
     
     if (window.innerWidth >= 1024) {
-      const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
-      if (totalWidth > 0) {
-        const tween = gsap.to(projectsRef.current, {
-          x: -totalWidth,
-          ease: "none",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            pin: true,
-            scrub: 1,
-            start: "top 10%",
-            end: `+=${totalWidth + window.innerHeight}`,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-        if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
-      }
+      setTimeout(() => {
+        if (projectsRef.current) {
+          const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
+          if (totalWidth > 0) {
+            const tween = gsap.to(projectsRef.current, {
+              x: -totalWidth,
+              ease: "none",
+              scrollTrigger: {
+                trigger: containerRef.current,
+                pin: true,
+                scrub: 1,
+                start: "top 10%",
+                end: `+=${totalWidth + window.innerHeight}`,
+                anticipatePin: 1,
+                invalidateOnRefresh: true,
+                refreshPriority: -1,
+              },
+            });
+            if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
+            ScrollTrigger.refresh();
+          }
+        }
+      }, 100);
     }
   }, []);
 
@@ -153,65 +156,58 @@ const Project = () => {
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
     const dt = getDeviceType();
     setDeviceType(dt);
     setIsInitialized(true);
-  }, [getDeviceType]);
+    
+    setTimeout(() => {
+      setIsReady(true);
+    }, 200);
+  }, [isClient, getDeviceType]);
 
   useEffect(() => {
-    if (!isInitialized || !isClient || typeof window === "undefined") return;
+    if (!isInitialized || !isClient || !isReady || typeof window === "undefined") return;
+    
+    killCreatedTriggers();
     
     const timer = setTimeout(() => {
-      killCreatedTriggers();
       if (deviceType === "desktop") {
         initializeDesktopAnimation();
       } else {
         initializeRevealAnimations();
       }
-    }, 150);
+    }, 300);
 
     let resizeTimeout;
     const handleResize = () => {
-      const currentDevice = getDeviceType();
-      if (currentDevice !== deviceType) {
-        setDeviceType(currentDevice);
-      } else {
-        if (deviceType === "desktop") {
-          clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            initializeDesktopAnimation();
-          }, 300);
-        }
-      }
-    };
-
-    const debounced = () => {
       clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(handleResize, 200);
+      resizeTimeout = setTimeout(() => {
+        const currentDevice = getDeviceType();
+        if (currentDevice !== deviceType) {
+          setDeviceType(currentDevice);
+        } else if (deviceType === "desktop") {
+          killCreatedTriggers();
+          initializeDesktopAnimation();
+        }
+      }, 300);
     };
 
-    window.addEventListener("resize", debounced);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(resizeTimeout);
-      window.removeEventListener("resize", debounced);
+      window.removeEventListener("resize", handleResize);
       killCreatedTriggers();
-      if (typeof window !== "undefined") {
-        ScrollTrigger.getAll().forEach((trigger) => {
-          try {
-            if (trigger.vars && trigger.vars.trigger === containerRef.current) {
-              trigger.kill();
-            }
-          } catch (e) {
-            console.warn("Error killing trigger:", e);
-          }
-        });
-      }
     };
   }, [
     isInitialized,
     isClient,
+    isReady,
     deviceType,
     getDeviceType,
     initializeDesktopAnimation,
@@ -219,7 +215,19 @@ const Project = () => {
     killCreatedTriggers,
   ]);
 
-  if (!isInitialized || !isClient) {
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") {
+        ScrollTrigger.getAll().forEach((trigger) => {
+          try {
+            trigger.kill();
+          } catch (e) {}
+        });
+      }
+    };
+  }, []);
+
+  if (!isInitialized || !isClient || !isReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -251,6 +259,9 @@ const Project = () => {
               : "flex-col md:flex-row md:flex-wrap w-full max-w-5xl mx-auto items-center"
           }
         `}
+        style={{
+          willChange: deviceType === "desktop" ? "transform" : "auto"
+        }}
       >
         {projects.map((project, idx) => (
           <div
@@ -261,7 +272,7 @@ const Project = () => {
                   ? "w-full max-w-xs mx-auto"
                   : deviceType === "tablet"
                   ? "w-full md:w-1/2 px-2 mb-6 max-w-sm mx-auto"
-                  : "w-72 lg:w-80 xl:w-84 h-72 lg:h-80 xl:h-84 flex-shrink-0 relative group"
+                  : "w-72 lg:w-80 xl:w-96 h-72 lg:h-80 xl:h-96 flex-shrink-0 relative group"
               }
             `}
             style={{
