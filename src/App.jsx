@@ -4,7 +4,7 @@ import About from "./components/About.jsx";
 import Project from "./components/Project.jsx";
 import Contact from "./components/Contact.jsx";
 import { Route, Routes } from "react-router-dom";
-import Navbar from "./assets/NavBar.jsx";
+import Navbar from "./components/Navbar.jsx";
 
 const App = () => {
   return (
