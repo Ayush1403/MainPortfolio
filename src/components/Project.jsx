@@ -68,7 +68,7 @@ const Project = () => {
       createdTriggers.current.forEach((t) => {
         try {
           t.kill?.();
-        } catch (e) {}
+        } catch {}
       });
       createdTriggers.current.length = 0;
     }
@@ -192,7 +192,7 @@ const Project = () => {
         ScrollTrigger.getAll().forEach((trigger) => {
           try {
             trigger.kill();
-          } catch (e) {}
+          } catch {}
         });
       }
     };
@@ -243,7 +243,7 @@ const Project = () => {
                   ? "w-full max-w-xs mx-auto"
                   : deviceType === "tablet"
                   ? "w-full md:w-1/2 px-2 mb-6 max-w-sm mx-auto"
-                  : "w-72 lg:w-80 xl:w-96 h-72 lg:h-80 xl:h-96 flex-shrink-0 relative group"
+                  : "w-80 h-[28rem] flex-shrink-0 relative group"
               }
             `}
             style={{
@@ -252,11 +252,11 @@ const Project = () => {
           >
             {deviceType !== "desktop" ? (
               <div className="flex flex-col w-full">
-                <div className="relative w-full overflow-hidden">
+                <div className="relative w-full overflow-hidden aspect-[4/3]">
                   <img
                     src={project.image}
                     alt={project.name}
-                    className="w-full h-auto object-cover block"
+                    className="w-full h-full object-cover block"
                     loading="lazy"
                   />
                   <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl z-10 drop-shadow-lg">
@@ -302,15 +302,17 @@ const Project = () => {
               </div>
             ) : (
               <>
-                <img
-                  src={project.image}
-                  alt={project.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl lg:text-2xl z-10 drop-shadow-lg">
-                  {project.name}
-                </h2>
+                <div className="w-full h-full relative overflow-hidden aspect-[4/3]">
+                  <img
+                    src={project.image}
+                    alt={project.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl lg:text-2xl z-10 drop-shadow-lg">
+                    {project.name}
+                  </h2>
+                </div>
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-end p-4 sm:p-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
                   <p className="text-white text-sm sm:text-base mb-3 font-light">
                     {project.description}
