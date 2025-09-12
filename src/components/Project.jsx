@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/all";
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 const Project = () => {
   const containerRef = useRef(null);
@@ -11,6 +13,7 @@ const Project = () => {
   const createdTriggers = useRef([]);
   const [deviceType, setDeviceType] = useState("");
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   const projects = [
     {
@@ -52,6 +55,7 @@ const Project = () => {
   ];
 
   const getDeviceType = useCallback(() => {
+    if (typeof window === "undefined") return "desktop";
     const w = window.innerWidth;
     if (w < 768) return "mobile";
     if (w < 1024) return "tablet";
@@ -63,22 +67,29 @@ const Project = () => {
       createdTriggers.current.forEach((t) => {
         try {
           t.kill?.();
-        } catch (e) {}
+        } catch (e) {
+          console.warn("Error killing trigger:", e);
+        }
       });
       createdTriggers.current.length = 0;
     }
   }, []);
 
   const initializeDesktopAnimation = useCallback(() => {
-    if (!projectsRef.current || !containerRef.current) return;
+    if (!projectsRef.current || !containerRef.current || typeof window === "undefined") return;
+    
     ScrollTrigger.getAll().forEach((trigger) => {
       try {
         if (trigger.vars && trigger.vars.trigger === containerRef.current) {
           trigger.kill();
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Error killing existing trigger:", e);
+      }
     });
+    
     gsap.set(projectsRef.current, { x: 0 });
+    
     if (window.innerWidth >= 1024) {
       const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
       if (totalWidth > 0) {
@@ -105,6 +116,7 @@ const Project = () => {
       ScrollTrigger.refresh();
       return;
     }
+    
     if (headingRef.current) {
       const tween = gsap.from(headingRef.current, {
         y: 30,
@@ -119,6 +131,7 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     }
+    
     const cards = gsap.utils.toArray(".project-card");
     cards.forEach((card) => {
       const tween = gsap.from(card, {
@@ -134,23 +147,29 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     });
+    
     ScrollTrigger.refresh();
   }, [deviceType]);
 
   useEffect(() => {
+    setIsClient(true);
     const dt = getDeviceType();
     setDeviceType(dt);
     setIsInitialized(true);
   }, [getDeviceType]);
 
   useEffect(() => {
-    if (!isInitialized) return;
-    killCreatedTriggers();
-    if (deviceType === "desktop") {
-      initializeDesktopAnimation();
-    } else {
-      initializeRevealAnimations();
-    }
+    if (!isInitialized || !isClient || typeof window === "undefined") return;
+    
+    const timer = setTimeout(() => {
+      killCreatedTriggers();
+      if (deviceType === "desktop") {
+        initializeDesktopAnimation();
+      } else {
+        initializeRevealAnimations();
+      }
+    }, 150);
+
     let resizeTimeout;
     const handleResize = () => {
       const currentDevice = getDeviceType();
@@ -158,29 +177,41 @@ const Project = () => {
         setDeviceType(currentDevice);
       } else {
         if (deviceType === "desktop") {
-          initializeDesktopAnimation();
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            initializeDesktopAnimation();
+          }, 300);
         }
       }
     };
+
     const debounced = () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(handleResize, 200);
     };
+
     window.addEventListener("resize", debounced);
+
     return () => {
-      window.removeEventListener("resize", debounced);
+      clearTimeout(timer);
       clearTimeout(resizeTimeout);
+      window.removeEventListener("resize", debounced);
       killCreatedTriggers();
-      ScrollTrigger.getAll().forEach((trigger) => {
-        try {
-          if (trigger.vars && trigger.vars.trigger === containerRef.current) {
-            trigger.kill();
+      if (typeof window !== "undefined") {
+        ScrollTrigger.getAll().forEach((trigger) => {
+          try {
+            if (trigger.vars && trigger.vars.trigger === containerRef.current) {
+              trigger.kill();
+            }
+          } catch (e) {
+            console.warn("Error killing trigger:", e);
           }
-        } catch (e) {}
-      });
+        });
+      }
     };
   }, [
     isInitialized,
+    isClient,
     deviceType,
     getDeviceType,
     initializeDesktopAnimation,
@@ -188,7 +219,7 @@ const Project = () => {
     killCreatedTriggers,
   ]);
 
-  if (!isInitialized) {
+  if (!isInitialized || !isClient) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -330,7 +361,6 @@ const Project = () => {
                       Demo
                     </a>
                   </div>
-                  
                 </div>
               </>
             )}
