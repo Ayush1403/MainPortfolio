@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap");
+
+body{
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+
+@theme{
+  --font-Geist: "Geist", sans-serif;
+  --font-vibes: "Great Vibes", cursive;
+  --font-poppins: "Poppins", sans-serif;
+  --color-fnts: #BABABA;
+}
+
+
+@layer components {
+  .test-vibes {
+    font-family: "Great Vibes", cursive;
+    font-size: 3rem;
+    color: red;
+  }
+}
