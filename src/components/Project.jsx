@@ -8,13 +8,9 @@ if (typeof window !== "undefined") {
 
 const Project = () => {
   const containerRef = useRef(null);
-  const projectsRef = useRef(null);
   const headingRef = useRef(null);
   const createdTriggers = useRef([]);
-  const [deviceType, setDeviceType] = useState("");
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [isReady, setIsReady] = useState(false);
 
   const projects = [
     {
@@ -55,52 +51,20 @@ const Project = () => {
     },
   ];
 
-  const getDeviceType = useCallback(() => {
-    if (typeof window === "undefined") return "desktop";
-    const w = window.innerWidth;
-    if (w < 768) return "mobile";
-    if (w < 1024) return "tablet";
-    return "desktop";
-  }, []);
-
   const killCreatedTriggers = useCallback(() => {
-    if (createdTriggers.current && createdTriggers.current.length) {
+    if (createdTriggers.current.length) {
       createdTriggers.current.forEach((t) => {
         try {
           t.kill?.();
-        } catch {}
+        } catch (e) {}
       });
       createdTriggers.current.length = 0;
     }
   }, []);
 
-  const initializeDesktopAnimation = useCallback(() => {
-    if (!projectsRef.current || !containerRef.current || typeof window === "undefined") return;
-    gsap.set(projectsRef.current, { x: 0 });
-    let ctx = gsap.context(() => {
-      const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
-      if (totalWidth > 0) {
-        const tween = gsap.to(projectsRef.current, {
-          x: -totalWidth,
-          ease: "none",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            pin: true,
-            scrub: 1,
-            start: "top top",
-            end: () => `+=${projectsRef.current.scrollWidth}`,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-            fastScrollEnd: true,
-          },
-        });
-        if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
-      }
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
-
   const initializeRevealAnimations = useCallback(() => {
+    killCreatedTriggers();
+
     if (headingRef.current) {
       const tween = gsap.from(headingRef.current, {
         y: 30,
@@ -115,12 +79,14 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     }
+
     const cards = gsap.utils.toArray(".project-card");
-    cards.forEach((card) => {
+    cards.forEach((card, i) => {
       const tween = gsap.from(card, {
         y: 40,
         opacity: 0,
         duration: 0.7,
+        delay: i * 0.1,
         ease: "power3.out",
         scrollTrigger: {
           trigger: card,
@@ -130,8 +96,9 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     });
+
     ScrollTrigger.refresh();
-  }, []);
+  }, [killCreatedTriggers]);
 
   useEffect(() => {
     setIsClient(true);
@@ -139,66 +106,14 @@ const Project = () => {
 
   useEffect(() => {
     if (!isClient) return;
-    const dt = getDeviceType();
-    setDeviceType(dt);
-    setIsInitialized(true);
-    setTimeout(() => {
-      setIsReady(true);
-    }, 200);
-  }, [isClient, getDeviceType]);
+    initializeRevealAnimations();
 
-  useEffect(() => {
-    if (!isInitialized || !isClient || !isReady || typeof window === "undefined") return;
-    killCreatedTriggers();
-    const timer = setTimeout(() => {
-      if (deviceType === "desktop") {
-        initializeDesktopAnimation();
-      } else {
-        initializeRevealAnimations();
-      }
-      ScrollTrigger.refresh(true);
-    }, 400);
-    let resizeTimeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        const currentDevice = getDeviceType();
-        if (currentDevice !== deviceType) {
-          setDeviceType(currentDevice);
-        } else if (deviceType === "desktop") {
-          killCreatedTriggers();
-          initializeDesktopAnimation();
-          ScrollTrigger.refresh(true);
-        }
-      }, 300);
-    };
-    window.addEventListener("resize", handleResize);
     return () => {
-      clearTimeout(timer);
-      clearTimeout(resizeTimeout);
-      window.removeEventListener("resize", handleResize);
       killCreatedTriggers();
     };
-  }, [isInitialized, isClient, isReady, deviceType, getDeviceType, initializeDesktopAnimation, initializeRevealAnimations, killCreatedTriggers]);
+  }, [isClient, initializeRevealAnimations, killCreatedTriggers]);
 
-  useEffect(() => {
-    if (document.fonts) {
-      document.fonts.ready.then(() => {
-        ScrollTrigger.refresh(true);
-      });
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        ScrollTrigger.getAll().forEach((trigger) => {
-          try {
-            trigger.kill();
-          } catch {}
-        });
-      }
-    };
-  }, []);
-
-  if (!isInitialized || !isClient || !isReady) {
+  if (!isClient) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -221,133 +136,108 @@ const Project = () => {
         </h1>
       </div>
 
-      <div
-        ref={projectsRef}
-        className={`flex items-start gap-6 sm:gap-8 md:gap-10 lg:gap-12 flex-wrap
-          ${
-            deviceType === "desktop"
-              ? "flex-row flex-nowrap w-max"
-              : "flex-col md:flex-row md:flex-wrap w-full max-w-5xl mx-auto items-center"
-          }
-        `}
-        style={{
-          willChange: deviceType === "desktop" ? "transform" : "auto",
-        }}
-      >
-        {projects.map((project, idx) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 max-w-7xl mx-auto">
+        {projects.map((project) => (
           <div
             key={project.id}
-            className={`project-card border-2 border-transparent hover:border-white transition-all duration-500 overflow-hidden
-              ${
-                deviceType === "mobile"
-                  ? "w-full max-w-xs mx-auto"
-                  : deviceType === "tablet"
-                  ? "w-full md:w-1/2 px-2 mb-6 max-w-sm mx-auto"
-                  : "w-80 h-[28rem] flex-shrink-0 relative group"
-              }
-            `}
-            style={{
-              animationDelay: deviceType !== "desktop" ? `${idx * 0.06}s` : "0s",
-            }}
+            className="project-card border-2 border-transparent hover:border-white transition-all duration-500 overflow-hidden relative group bg-black"
           >
-            {deviceType !== "desktop" ? (
-              <div className="flex flex-col w-full">
-                <div className="relative w-full overflow-hidden aspect-[4/3]">
-                  <img
-                    src={project.image}
-                    alt={project.name}
-                    className="w-full h-full object-cover block"
-                    loading="lazy"
-                  />
-                  <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl z-10 drop-shadow-lg">
-                    {project.name}
-                  </h2>
+            {/* Small & Medium Screen Card */}
+            <div className="lg:hidden flex flex-col w-full">
+              <div className="relative w-full overflow-hidden">
+                <img
+                  src={project.image}
+                  alt={project.name}
+                  className="w-full h-auto object-cover block"
+                  loading="lazy"
+                />
+                <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl z-10 drop-shadow-lg">
+                  {project.name}
+                </h2>
+              </div>
+              <div className="w-full bg-black/60 backdrop-blur-sm flex flex-col justify-end p-4 sm:p-6 mt-3">
+                <h3 className="text-white font-poppins font-semibold text-xl sm:text-2xl mb-2">
+                  {project.name}
+                </h3>
+                <p className="text-white text-sm sm:text-base mb-3 font-light">
+                  {project.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4">
+                  {project.tech.map((t, i) => (
+                    <span
+                      key={i}
+                      className="bg-gray-700/80 backdrop-blur-sm text-xs sm:text-sm rounded-md text-white px-2 sm:px-3 py-1 border border-gray-600/50"
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
-                <div className="w-full bg-black/60 backdrop-blur-sm flex flex-col justify-end p-4 sm:p-6 mt-3">
-                  <h3 className="text-white font-poppins font-semibold text-xl sm:text-2xl mb-2">
-                    {project.name}
-                  </h3>
-                  <p className="text-white text-sm sm:text-base mb-3 font-light">
-                    {project.description}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4">
-                    {project.tech.map((t, i) => (
-                      <span
-                        key={i}
-                        className="bg-gray-700/80 backdrop-blur-sm text-xs sm:text-sm rounded-md text-white px-2 sm:px-3 py-1 border border-gray-600/50"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 sm:gap-3">
-                    <a
-                      href={project.sourceCode}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-white border border-white/80 px-3 sm:px-4 py-2 hover:bg-white hover:text-black transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
-                    >
-                      Source
-                    </a>
-                    <a
-                      href={project.demo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-black bg-white/90 border border-white px-3 sm:px-4 py-2 hover:bg-white transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
-                    >
-                      Demo
-                    </a>
-                  </div>
+                <div className="flex gap-2 sm:gap-3">
+                  <a
+                    href={project.sourceCode}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white border border-white/80 px-3 sm:px-4 py-2 hover:bg-white hover:text-black transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
+                  >
+                    Source
+                  </a>
+                  <a
+                    href={project.demo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-black bg-white/90 border border-white px-3 sm:px-4 py-2 hover:bg-white transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
+                  >
+                    Demo
+                  </a>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="w-full h-full relative overflow-hidden aspect-[4/3]">
-                  <img
-                    src={project.image}
-                    alt={project.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl lg:text-2xl z-10 drop-shadow-lg">
-                    {project.name}
-                  </h2>
-                </div>
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-end p-4 sm:p-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                  <p className="text-white text-sm sm:text-base mb-3 font-light">
-                    {project.description}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4">
-                    {project.tech.map((t, i) => (
-                      <span
-                        key={i}
-                        className="bg-gray-700/80 backdrop-blur-sm text-xs sm:text-sm rounded-md text-white px-2 sm:px-3 py-1 border border-gray-600/50 hover:bg-gray-600/80 transition-colors duration-200"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 sm:gap-3">
-                    <a
-                      href={project.sourceCode}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-white border border-white/80 px-3 sm:px-4 py-2 hover:bg-white hover:text-black transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
+            </div>
+
+            {/* Large Screen Card */}
+            <div className="hidden lg:block w-[400px] h-[400px]">
+              <img
+                src={project.image}
+                alt={project.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+              />
+              <h2 className="text-white absolute top-3 sm:top-4 left-3 sm:left-4 font-poppins font-semibold text-lg sm:text-xl lg:text-2xl z-10 drop-shadow-lg">
+                {project.name}
+              </h2>
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-end p-4 sm:p-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <p className="text-white text-sm sm:text-base mb-3 font-light">
+                  {project.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4">
+                  {project.tech.map((t, i) => (
+                    <span
+                      key={i}
+                      className="bg-gray-700/80 backdrop-blur-sm text-xs sm:text-sm rounded-md text-white px-2 sm:px-3 py-1 border border-gray-600/50 hover:bg-gray-600/80 transition-colors duration-200"
                     >
-                      Source
-                    </a>
-                    <a
-                      href={project.demo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-black bg-white/90 border border-white px-3 sm:px-4 py-2 hover:bg-white transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
-                    >
-                      Demo
-                    </a>
-                  </div>
+                      {t}
+                    </span>
+                  ))}
                 </div>
-              </>
-            )}
+                <div className="flex gap-2 sm:gap-3">
+                  <a
+                    href={project.sourceCode}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white border border-white/80 px-3 sm:px-4 py-2 hover:bg-white hover:text-black transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
+                  >
+                    Source
+                  </a>
+                  <a
+                    href={project.demo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-black bg-white/90 border border-white px-3 sm:px-4 py-2 hover:bg-white transition-all duration-300 text-xs sm:text-sm flex-1 text-center rounded-sm backdrop-blur-sm font-medium"
+                  >
+                    Demo
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
