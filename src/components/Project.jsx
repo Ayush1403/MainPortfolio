@@ -76,50 +76,31 @@ const Project = () => {
 
   const initializeDesktopAnimation = useCallback(() => {
     if (!projectsRef.current || !containerRef.current || typeof window === "undefined") return;
-    
-    ScrollTrigger.getAll().forEach((trigger) => {
-      try {
-        if (trigger.vars && trigger.vars.trigger === containerRef.current) {
-          trigger.kill();
-        }
-      } catch (e) {}
-    });
-    
     gsap.set(projectsRef.current, { x: 0 });
-    
-    if (window.innerWidth >= 1024) {
-      setTimeout(() => {
-        if (projectsRef.current) {
-          const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
-          if (totalWidth > 0) {
-            const tween = gsap.to(projectsRef.current, {
-              x: -totalWidth,
-              ease: "none",
-              scrollTrigger: {
-                trigger: containerRef.current,
-                pin: true,
-                scrub: 1,
-                start: "top 10%",
-                end: `+=${totalWidth + window.innerHeight}`,
-                anticipatePin: 1,
-                invalidateOnRefresh: true,
-                refreshPriority: -1,
-              },
-            });
-            if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
-            ScrollTrigger.refresh();
-          }
-        }
-      }, 100);
-    }
+    let ctx = gsap.context(() => {
+      const totalWidth = projectsRef.current.scrollWidth - window.innerWidth;
+      if (totalWidth > 0) {
+        const tween = gsap.to(projectsRef.current, {
+          x: -totalWidth,
+          ease: "none",
+          scrollTrigger: {
+            trigger: containerRef.current,
+            pin: true,
+            scrub: 1,
+            start: "top top",
+            end: () => `+=${projectsRef.current.scrollWidth}`,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            fastScrollEnd: true,
+          },
+        });
+        if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
+      }
+    }, containerRef);
+    return () => ctx.revert();
   }, []);
 
   const initializeRevealAnimations = useCallback(() => {
-    if (deviceType === "desktop") {
-      ScrollTrigger.refresh();
-      return;
-    }
-    
     if (headingRef.current) {
       const tween = gsap.from(headingRef.current, {
         y: 30,
@@ -134,7 +115,6 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     }
-    
     const cards = gsap.utils.toArray(".project-card");
     cards.forEach((card) => {
       const tween = gsap.from(card, {
@@ -150,9 +130,8 @@ const Project = () => {
       });
       if (tween.scrollTrigger) createdTriggers.current.push(tween.scrollTrigger);
     });
-    
     ScrollTrigger.refresh();
-  }, [deviceType]);
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -163,7 +142,6 @@ const Project = () => {
     const dt = getDeviceType();
     setDeviceType(dt);
     setIsInitialized(true);
-    
     setTimeout(() => {
       setIsReady(true);
     }, 200);
@@ -171,17 +149,15 @@ const Project = () => {
 
   useEffect(() => {
     if (!isInitialized || !isClient || !isReady || typeof window === "undefined") return;
-    
     killCreatedTriggers();
-    
     const timer = setTimeout(() => {
       if (deviceType === "desktop") {
         initializeDesktopAnimation();
       } else {
         initializeRevealAnimations();
       }
-    }, 300);
-
+      ScrollTrigger.refresh(true);
+    }, 400);
     let resizeTimeout;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
@@ -192,30 +168,25 @@ const Project = () => {
         } else if (deviceType === "desktop") {
           killCreatedTriggers();
           initializeDesktopAnimation();
+          ScrollTrigger.refresh(true);
         }
       }, 300);
     };
-
     window.addEventListener("resize", handleResize);
-
     return () => {
       clearTimeout(timer);
       clearTimeout(resizeTimeout);
       window.removeEventListener("resize", handleResize);
       killCreatedTriggers();
     };
-  }, [
-    isInitialized,
-    isClient,
-    isReady,
-    deviceType,
-    getDeviceType,
-    initializeDesktopAnimation,
-    initializeRevealAnimations,
-    killCreatedTriggers,
-  ]);
+  }, [isInitialized, isClient, isReady, deviceType, getDeviceType, initializeDesktopAnimation, initializeRevealAnimations, killCreatedTriggers]);
 
   useEffect(() => {
+    if (document.fonts) {
+      document.fonts.ready.then(() => {
+        ScrollTrigger.refresh(true);
+      });
+    }
     return () => {
       if (typeof window !== "undefined") {
         ScrollTrigger.getAll().forEach((trigger) => {
@@ -260,7 +231,7 @@ const Project = () => {
           }
         `}
         style={{
-          willChange: deviceType === "desktop" ? "transform" : "auto"
+          willChange: deviceType === "desktop" ? "transform" : "auto",
         }}
       >
         {projects.map((project, idx) => (
