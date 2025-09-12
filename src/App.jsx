@@ -1,10 +1,10 @@
 import React from "react";
-import Hero from "./components/Hero";
-import About from "./components/About";
-import Project from "./components/Project";
-import Contact from "./components/Contact";
+import Hero from "./components/Hero.jsx";
+import About from "./components/About.jsx";
+import Project from "./components/Project.jsx";
+import Contact from "./components/Contact.jsx";
 import { Route, Routes } from "react-router-dom";
-import Navbar from "./assets/NavBar";
+import Navbar from "./assets/NavBar.jsx";
 
 const App = () => {
   return (
