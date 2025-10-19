@@ -6,7 +6,7 @@ This project showcases my work, projects, and skills as a Frontend Developer. Bu
 ## 📸 Screenshots
 
 ### 🏠 Home Section  
-![Home Section](/Screenshot%202025-10-19%20223139.png)
+![Home Section](./public/images/Screenshot%202025-10-19%20223139.png)
 
 ### 💼 Projects Section  
 ![Projects Section](/Screenshot%202025-10-19%20223207.png)
