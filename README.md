@@ -8,14 +8,16 @@ This project showcases my work, projects, and skills as a Frontend Developer. Bu
 ### 🏠 Home Section  
 ![Home Section](./public/images/Screenshot%202025-10-19%20223139.png)
 
+### 🧩 About / Other Sections  
+![Other Section](./public/images/Screenshot%202025-10-19%20223207.png)
+
 ### 💼 Projects Section  
-![Projects Section](./public/images/Screenshot%202025-10-19%20223207.png)
+![Projects Section](./public/images/Screenshot%202025-10-19%20223219.png)
 
 ### 📞 Contact Section  
 ![Contact Section](./public/images/Screenshot%202025-10-19%20223242.png)
 
-### 🧩 About / Other Sections  
-![Other Section](./public/images/Screenshot%202025-10-19%20223219.png)
+
 
 ## Tech Stack
 
