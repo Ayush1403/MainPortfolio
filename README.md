@@ -12,10 +12,10 @@ This project showcases my work, projects, and skills as a Frontend Developer. Bu
 ![Projects Section](./public/images/Screenshot%202025-10-19%20223207.png)
 
 ### 📞 Contact Section  
-![Contact Section](./public/images/Screenshot%202025-10-19%20223219.png)
+![Contact Section](./public/images/Screenshot%202025-10-19%20223242.png)
 
 ### 🧩 About / Other Sections  
-![Other Section](./public/images/Screenshot%202025-10-19%20223242.png)
+![Other Section](./public/images/Screenshot%202025-10-19%20223219.png)
 
 ## Tech Stack
 
